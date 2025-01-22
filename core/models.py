@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from abc import ABC, abstractmethod
+from multiprocessing import Pool
 
 @dataclass
 class AudioCodec:
@@ -48,15 +49,22 @@ class MIMFHandler(VideoHandler):
         #set new audio codec to the video file
             
 
-def transform_audio(filter, video: VideoFile, handler: VideoHandler):
+def trasnform_audio(video: VideoFile, handler: VideoHandler):
+    
+    new_video = video.copy()
+    handler.transform_audio(new_video)
+    
+    return new_video
+
+def transform_audio_files_multiprocess(filter, repo, handler: VideoHandler):
 
     videos = repository.get_videos(filter_)
-    new_videos = []
-    for video in videos:
-        new_video = video.copy()
-        handler.transform_audio(new_video)
-        new_videos.append(new_video)
-        
+    
+    process_item_with_constant = trasnform_audio(trasnform_audio, constant=handler)
+
+    with Pool(processes=4) as pool:  # Adjust 'processes' based on your CPU cores
+        new_videos = pool.map(process_item_with_constant, videos)  # Map each item to the process_item function
+
     return new_videos
 
 class Repository(ABC):
@@ -82,7 +90,7 @@ if __name__ == "__main__":
     
     repository = VideoRepository(mediainfo_binary=Path("mediainfo"))
     handler = MIMFHandler(ffmpeg_binary=Path("ffmpeg"))
-    new_videos = transform_audio(filter, repository, handler)
+    new_videos = transform_audio_files_multiprocess(filter, repository, handler)
     
     print("Videos transformed")
     print(new_videos)
